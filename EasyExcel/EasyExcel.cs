@@ -11,9 +11,7 @@ namespace EasyExcelTools
 {
     public static class EasyExcel
     {
-        /// <summary>
-        /// خواندن یک برگه از فایل Excel
-        /// </summary>
+        
         public static List<T> ImportFromExcel<T>(Stream stream) where T : new()
         {
             var result = new List<T>();
@@ -68,9 +66,6 @@ namespace EasyExcelTools
             return result;
         }
 
-        /// <summary>
-        /// تبدیل لیست جنریک به فایل Excel
-        /// </summary>
         public static byte[] ExportToExcel<T>(IEnumerable<T> data, string sheetName = "Sheet1")
         {
             using (var memoryStream = new MemoryStream())
@@ -99,9 +94,7 @@ namespace EasyExcelTools
                 return memoryStream.ToArray();
             }
         }
-        /// <summary>
-        /// تبدیل لیست جنریک به DataTable با فیلتر ویژگی‌ها
-        /// </summary>
+        
         private static DataTable ToFilteredDataTable<T>(IEnumerable<T> data)
         {
             var dataTable = new DataTable();
@@ -129,18 +122,13 @@ namespace EasyExcelTools
 
             return dataTable;
         }
-        /// <summary>
-        /// دریافت ترتیب ستون از Attribute
-        /// </summary>
+
         private static int GetColumnOrder(PropertyInfo property)
         {
             var attribute = property.GetCustomAttribute<ExcelExportAttribute>();
             return attribute?.ColumnOrder ?? int.MaxValue; // اگر ColumnOrder وجود ندارد، آخرین ستون در نظر گرفته می‌شود
         }
 
-        /// <summary>
-        /// تبدیل لیست جنریک به DataTable
-        /// </summary>
         private static DataTable ToDataTable<T>(IEnumerable<T> data)
         {
             var dataTable = new DataTable();
@@ -164,9 +152,7 @@ namespace EasyExcelTools
             return dataTable;
         }
 
-        /// <summary>
-        /// نوشتن DataTable به داخل Worksheet
-        /// </summary>
+
         private static void WriteDataTableToWorksheet(Worksheet worksheet, DataTable dataTable)
         {
             var sheetData = worksheet.GetFirstChild<SheetData>() ?? worksheet.AppendChild(new SheetData());
@@ -198,9 +184,7 @@ namespace EasyExcelTools
                 sheetData.AppendChild(dataRow);
             }
         }
-        /// <summary>
-        /// ایجاد سلول متنی
-        /// </summary>
+
         private static Cell CreateTextCell(string cellReference, string value)
         {
             return new Cell
@@ -210,9 +194,7 @@ namespace EasyExcelTools
                 CellValue = new CellValue(value)
             };
         }
-        /// <summary>
-        /// ایجاد سلول با نوع داده مناسب
-        /// </summary>
+
         private static Cell CreateTypedCell(string cellReference, object value)
         {
             if (value == null) return new Cell { CellReference = cellReference };
@@ -236,9 +218,7 @@ namespace EasyExcelTools
 
             return cell;
         }
-        /// <summary>
-        /// محاسبه شناسه سلول (CellReference)
-        /// </summary>
+
         private static string GetCellReference(int columnIndex, int rowIndex)
         {
             const string letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -254,9 +234,7 @@ namespace EasyExcelTools
             return $"{columnLetter}{rowIndex}";
         }
 
-        /// <summary>
-        /// اطمینان از وجود WorkbookStylesPart
-        /// </summary>
+  
         private static void EnsureWorkbookStylesPart(WorkbookPart workbookPart)
         {
             if (workbookPart.WorkbookStylesPart == null)
@@ -310,9 +288,7 @@ namespace EasyExcelTools
             stylesPart.Stylesheet.Save();
         }
 
-        /// <summary>
-        /// تعیین نوع داده برای سلول
-        /// </summary>
+
         private static CellValues GetCellDataType(object value)
         {
             if (value == null || value is string)
@@ -324,27 +300,21 @@ namespace EasyExcelTools
             return CellValues.String;
         }
 
-        /// <summary>
-        /// دریافت نام ستون از Attribute
-        /// </summary>
+
         private static string GetExcelColumnName(PropertyInfo property)
         {
             var attribute = property.GetCustomAttribute<ExcelColumnNameAttribute>();
             return attribute?.ColumnName ?? property.Name;
         }
 
-        /// <summary>
-        /// دریافت نام برگه از Attribute
-        /// </summary>
+    
         private static string GetExcelSheetName<T>()
         {
             var attribute = typeof(T).GetCustomAttribute<ExcelSheetNameAttribute>();
             return attribute?.SheetName ?? "Sheet1";
         }
 
-        /// <summary>
-        /// دریافت مقدار یک سلول
-        /// </summary>
+
         private static string GetCellValue(Cell cell, WorkbookPart workbookPart)
         {
             if (cell == null) return string.Empty;
@@ -362,9 +332,7 @@ namespace EasyExcelTools
             return value ?? string.Empty;
         }
 
-        /// <summary>
-        /// تبدیل مقدار سلول به نوع داده مورد نظر
-        /// </summary>
+       
         private static object ConvertValue(string value, Type type)
         {
             if (string.IsNullOrEmpty(value)) return null;
