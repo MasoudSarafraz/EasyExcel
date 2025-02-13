@@ -86,3 +86,12 @@ public class Employee
     public DateTime BirthDate { get; set; }
 }
 ```
+
+### Handling Multiple Sheets
+You can read data from multiple sheets in a single Excel file:
+```csharp
+using (var stream = new FileStream("path_to_excel_file.xlsx", FileMode.Open))
+{
+    var (people, employees) = EasyExcel.ReadExcelFile<Person, Employee>(stream);
+}
+```
