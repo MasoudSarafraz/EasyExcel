@@ -21,10 +21,14 @@ Since **EasyExcel** is a single-file utility, you can simply copy the `EasyExcel
 To read data from an Excel file into a list of objects, use the `ReadExcelFile` method:
 
 ```csharp
+[ExcelSheetName(SheetName ="Sheet1")]
 public class Person
 {
+[ExcelColumnName(ColumnName = "CustomerName")]
     public string Name { get; set; }
+[ExcelColumnName(ColumnName = "CustomerAge")]
     public int Age { get; set; }
+[ExcelColumnName(ColumnName = "BirthDate")]
     public DateTime BirthDate { get; set; }
 }
 
