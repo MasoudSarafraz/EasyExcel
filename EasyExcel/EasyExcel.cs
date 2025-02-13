@@ -10,8 +10,8 @@ using DocumentFormat.OpenXml.Spreadsheet;
 namespace EasyExcelTools
 {
     public static class EasyExcel
-    {        
-        public static List<T> ImportFromExcel<T>(Stream stream) where T : new()
+    {
+        public static List<T> ReadExcelFile<T>(Stream stream) where T : new()
         {
             var result = new List<T>();
             var properties = typeof(T).GetProperties()
@@ -64,6 +64,36 @@ namespace EasyExcelTools
 
             return result;
         }
+        public static (List<T1>, List<T2>) ReadExcelFile<T1, T2>(Stream stream)
+            where T1 : new()
+            where T2 : new()
+        {
+            return new ValueTuple<List<T1>, List<T2>>(ReadExcelFile<T1>(stream), ReadExcelFile<T2>(stream));
+        }
+        public static (List<T1>, List<T2>, List<T3>) ReadExcelFile<T1, T2, T3>(Stream stream)
+            where T1 : new()
+            where T2 : new()
+            where T3 : new()
+        {
+            return new ValueTuple<List<T1>, List<T2>, List<T3>>(ReadExcelFile<T1>(stream), ReadExcelFile<T2>(stream), ReadExcelFile<T3>(stream));
+        }
+        public static (List<T1>, List<T2>, List<T3>, List<T4>) ReadExcelFile<T1, T2, T3, T4>(Stream stream)
+            where T1 : new()
+            where T2 : new()
+            where T3 : new()
+            where T4 : new()
+        {
+            return new ValueTuple<List<T1>, List<T2>, List<T3>, List<T4>>(ReadExcelFile<T1>(stream), ReadExcelFile<T2>(stream), ReadExcelFile<T3>(stream), ReadExcelFile<T4>(stream));
+        }
+        public static (List<T1>, List<T2>, List<T3>, List<T4>, List<T5>) ReadExcelFile<T1, T2, T3, T4, T5>(Stream stream)
+            where T1 : new()
+            where T2 : new()
+            where T3 : new()
+            where T4 : new()
+            where T5 : new()
+        {
+            return new ValueTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>(ReadExcelFile<T1>(stream), ReadExcelFile<T2>(stream), ReadExcelFile<T3>(stream), ReadExcelFile<T4>(stream), ReadExcelFile<T5>(stream));
+        }
         public static byte[] ExportToExcel<T>(IEnumerable<T> data, string sheetName = "Sheet1")
         {
             using (var memoryStream = new MemoryStream())
@@ -83,15 +113,13 @@ namespace EasyExcelTools
                         SheetId = 1,
                         Name = sheetName
                     });
-
                     WriteDataTableToWorksheet(worksheetPart.Worksheet, ToFilteredDataTable(data));
                     EnsureWorkbookStylesPart(workbookPart);
                     workbookPart.Workbook.Save();
                 }
-
                 return memoryStream.ToArray();
             }
-        }        
+        }
         private static DataTable ToFilteredDataTable<T>(IEnumerable<T> data)
         {
             var dataTable = new DataTable();
@@ -99,14 +127,12 @@ namespace EasyExcelTools
                 .Where(p => p.GetCustomAttribute<ExcelExportAttribute>() != null) // فیلتر ویژگی‌ها
                 .OrderBy(p => GetColumnOrder(p)) // مرتب‌سازی بر اساس ColumnOrder
                 .ToList();
-
             foreach (var property in properties)
             {
                 var attribute = property.GetCustomAttribute<ExcelExportAttribute>();
                 var columnName = attribute?.DisplayName ?? property.Name; // اگر DisplayName وجود ندارد، نام ویژگی استفاده می‌شود
                 dataTable.Columns.Add(columnName, Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType);
             }
-
             foreach (var item in data)
             {
                 var row = new object[properties.Count];
@@ -116,7 +142,6 @@ namespace EasyExcelTools
                 }
                 dataTable.Rows.Add(row);
             }
-
             return dataTable;
         }
         private static int GetColumnOrder(PropertyInfo property)
