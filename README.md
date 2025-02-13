@@ -46,6 +46,14 @@ using (var stream = new FileStream("path_to_excel_file.xlsx", FileMode.Open))
 To write a list of objects to an Excel file, use the ExportToExcel method:
 
 ```csharp
+public class Person
+{
+[ExcelExport(DisplayName = "Person Name")]
+    public string Name { get; set; }
+[ExcelExport(DisplayName = "Person Age")]
+    public int Age { get; set; }
+    public DateTime BirthDate { get; set; }
+}
 var people = new List<Person>
 {
     new Person { Name = "John Doe", Age = 30, BirthDate = new DateTime(1990, 1, 1) },
