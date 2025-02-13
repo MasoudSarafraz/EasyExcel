@@ -69,3 +69,20 @@ public class Employee
     public DateTime BirthDate { get; set; }
 }
 ```
+### Customizing Column Names and Sheet Names
+
+You can customize the column names and sheet names using attributes:
+```csharp
+[ExcelSheetName("Employees")]
+public class Employee
+{
+    [ExcelColumnName("Full Name")]
+    public string Name { get; set; }
+
+    [ExcelColumnName("Age in Years")]
+    public int Age { get; set; }
+
+    [ExcelColumnName("Date of Birth")]
+    public DateTime BirthDate { get; set; }
+}
+```
