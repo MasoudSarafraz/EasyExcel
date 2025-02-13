@@ -36,7 +36,7 @@ using (var stream = new FileStream("path_to_excel_file.xlsx", FileMode.Open))
         Console.WriteLine($"Name: {person.Name}, Age: {person.Age}, BirthDate: {person.BirthDate}");
     }
 }
-
+###
 ###Writing to Excel
 
 To write a list of objects to an Excel file, use the ExportToExcel method:
