@@ -407,7 +407,7 @@ namespace EasyExcelTools
         {
             return new ValueTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>(ReadExcelFile<T1>(stream), ReadExcelFile<T2>(stream), ReadExcelFile<T3>(stream), ReadExcelFile<T4>(stream), ReadExcelFile<T5>(stream));
         }
-        public static byte[] ExportToExcel<T>(IEnumerable<T> data, string sheetName = "Sheet1")
+        public static byte[] ExportToExcel<T>(IEnumerable<T> data, string sheetName = "Sheet1") where T : new()
         {
             using (var memoryStream = new MemoryStream())
             {
@@ -424,6 +424,27 @@ namespace EasyExcelTools
                     workbookPart.Workbook.Save();
                 }
                 return memoryStream.ToArray();
+            }
+        }
+        public static byte[] ExportToExcel<T>(DataTable datatable, string sheetName = "Sheet1") where T : new()
+        {
+            IEnumerable<T> data = ConvertDataTableToIEnumerable<T>(datatable);
+            return ExportToExcel(data, sheetName);            
+        }
+        private static IEnumerable<T> ConvertDataTableToIEnumerable<T>(DataTable dataTable) where T : new()
+        {
+            foreach (DataRow row in dataTable.Rows)
+            {
+                T item = new T();
+                foreach (PropertyInfo prop in typeof(T).GetProperties())
+                {
+                    if (dataTable.Columns.Contains(prop.Name) && row[prop.Name] != DBNull.Value)
+                    {
+                        object value = Convert.ChangeType(row[prop.Name], prop.PropertyType);
+                        prop.SetValue(item, value, null);
+                    }
+                }
+                yield return item;
             }
         }
         private static DataTable ToFilteredDataTable<T>(IEnumerable<T> data)
