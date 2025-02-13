@@ -95,3 +95,24 @@ using (var stream = new FileStream("path_to_excel_file.xlsx", FileMode.Open))
     var (people, employees) = EasyExcel.ReadExcelFile<Person, Employee>(stream);
 }
 ```
+Attributes
+----------
+
+*   **ExcelColumnNameAttribute**: Specifies the column name in the Excel file.
+    
+*   **ExcelSheetNameAttribute**: Specifies the sheet name in the Excel file.
+    
+*   **ExcelExportAttribute**: Specifies whether a property should be included in the export and its display name.
+    
+
+Limitations
+-----------
+
+*   **Excel Format**: Only supports .xlsx files (Excel 2007 and later).
+    
+*   **Data Types**: Supports basic data types like int, double, decimal, bool, DateTime, and string.
+
+Contributing
+------------
+
+Contributions are welcome! If you find a bug or have a feature request, please open an issue or submit a pull request.
