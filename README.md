@@ -36,8 +36,8 @@ using (var stream = new FileStream("path_to_excel_file.xlsx", FileMode.Open))
         Console.WriteLine($"Name: {person.Name}, Age: {person.Age}, BirthDate: {person.BirthDate}");
     }
 }
-###
-###Writing to Excel
+
+### Writing to Excel
 
 To write a list of objects to an Excel file, use the ExportToExcel method:
 
@@ -51,7 +51,7 @@ var people = new List<Person>
 var excelBytes = EasyExcel.ExportToExcel(people, "People");
 File.WriteAllBytes("output.xlsx", excelBytes);
 
-###Customizing Column Names and Sheet Names
+### Customizing Column Names and Sheet Names
 
 You can customize the column names and sheet names using attributes:
 
