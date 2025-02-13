@@ -360,12 +360,12 @@ namespace EasyExcelTools
                 var workbookPart = spreadsheetDocument.WorkbookPart;
                 if (workbookPart == null) { return result; }
                 var sheetName = GetExcelSheetName<T>();
-                var sheet = workbookPart.Workbook.Descendants<Sheet>().FirstOrDefault(s => s.Name?.Value == sheetName);
+                var sheet = workbookPart.Workbook.Descendants<Sheet>().FirstOrDefault(s => s.Name?.Value.Trim() == sheetName);
                 if (sheet == null) { return result; }
                 var worksheetPart = (WorksheetPart)workbookPart.GetPartById(sheet.Id);
                 var sheetData = worksheetPart.Worksheet.Elements<SheetData>().FirstOrDefault();
                 if (sheetData == null) { return result; }
-                var headers = sheetData.Elements<Row>().FirstOrDefault()?.Elements<Cell>().Select(c => GetCellValue(c, workbookPart)).ToList();
+                var headers = sheetData.Elements<Row>().FirstOrDefault()?.Elements<Cell>().Select(c => GetCellValue(c, workbookPart).Trim()).ToList();
                 if (headers == null || !headers.Any()) { return result; }
                 foreach (var row in sheetData.Elements<Row>().Skip(1))
                 {
