@@ -107,6 +107,13 @@ using (var stream = new FileStream("path_to_excel_file.xlsx", FileMode.Open))
     var (people, employees) = EasyExcel.ReadExcelFile<Person, Employee>(stream);
 }
 ```
+### How Using in Api
+You can use in api method like this:
+```csharp
+var result = EasyExcel.ExportToExcel(oNewList);
+FileContentResult content = new FileContentResult(result, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+return content;
+```
 Attributes
 ----------
 
