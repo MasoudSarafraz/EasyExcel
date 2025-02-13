@@ -20,7 +20,7 @@ Since **EasyExcel** is a single-file utility, you can simply copy the `EasyExcel
 
 To read data from an Excel file into a list of objects, use the `ReadExcelFile` method:
 
-```csharp
+```C#
 [ExcelSheetName(SheetName ="Sheet1")]
 public class Person
 {
@@ -45,7 +45,7 @@ using (var stream = new FileStream("path_to_excel_file.xlsx", FileMode.Open))
 
 To write a list of objects to an Excel file, use the ExportToExcel method:
 
-```csharp
+```C#
 public class Person
 {
 [ExcelExport(DisplayName = "Person Name")]
@@ -67,7 +67,7 @@ File.WriteAllBytes("output.xlsx", excelBytes);
 
 You can customize the column names and sheet names using attributes:
 
-```csharp
+```C#
 [ExcelSheetName("Employees")]
 public class Employee
 {
@@ -84,7 +84,7 @@ public class Employee
 ### Customizing Column Names and Sheet Names
 
 You can customize the column names and sheet names using attributes:
-```csharp
+```C#
 [ExcelSheetName("Employees")]
 public class Employee
 {
@@ -101,7 +101,7 @@ public class Employee
 
 ### Handling Multiple Sheets
 You can read data from multiple sheets in a single Excel file:
-```csharp
+```C#
 using (var stream = new FileStream("path_to_excel_file.xlsx", FileMode.Open))
 {
     var (people, employees) = EasyExcel.ReadExcelFile<Person, Employee>(stream);
