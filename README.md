@@ -1,6 +1,6 @@
 # EasyExcel - A Simple Excel Utility for C#
 
-**EasyExcel** is a lightweight utility for reading from and writing to Excel files in C#. It is built using only the built-in features of .NET Core, without relying on any external libraries or packages. This makes it a great choice for projects where you want to avoid additional dependencies.
+**EasyExcel** is a lightweight utility for reading from and writing to Excel files in C#. It is built using only the built-in features of .NET Core(OpenXML), without relying on any external libraries or packages. This makes it a great choice for projects where you want to avoid additional dependencies.
 
 ## Features
 
