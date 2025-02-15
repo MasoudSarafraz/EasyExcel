@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.1;netcoreapp3.0;netcoreapp3.1;net5.0;net6.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.1;netcoreapp3.0;netcoreapp3.1;net5.0;net6.0;net7.0;net8.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Description>EasyExcel is a useful tool for converting Excel files into your desired class structure or transforming your custom classes into Excel files. By simply using predefined attributes, you can easily perform these tasks in .NET Core. This package relies solely on the built-in features of .NET Core and does not use any third-party packages. Developed by Masoud Sarafraz.</Description>
     <RepositoryUrl>https://github.com/MasoudSarafraz/EasyExcel.git</RepositoryUrl>
     <PackageId>EasyExcel.Tools</PackageId>
