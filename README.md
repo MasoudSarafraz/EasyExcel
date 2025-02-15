@@ -66,24 +66,6 @@ File.WriteAllBytes("output.xlsx", excelBytes);
 ### Customizing Column Names and Sheet Names
 
 You can customize the column names and sheet names using attributes:
-
-```csharp
-[ExcelSheetName("Employees")]
-public class Employee
-{
-    [ExcelColumnName("Full Name")]
-    public string Name { get; set; }
-
-    [ExcelColumnName("Age in Years")]
-    public int Age { get; set; }
-
-    [ExcelColumnName("Date of Birth")]
-    public DateTime BirthDate { get; set; }
-}
-```
-### Customizing Column Names and Sheet Names
-
-You can customize the column names and sheet names using attributes:
 ```csharp
 [ExcelSheetName("Employees")]
 public class Employee
@@ -106,6 +88,13 @@ using (var stream = new FileStream("path_to_excel_file.xlsx", FileMode.Open))
 {
     var (people, employees) = EasyExcel.ReadExcelFile<Person, Employee>(stream);
 }
+```
+### How Using in Api
+You can use in api method like this:
+```csharp
+var result = EasyExcel.ExportToExcel(oNewList);
+FileContentResult content = new FileContentResult(result, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+return content;
 ```
 Attributes
 ----------
