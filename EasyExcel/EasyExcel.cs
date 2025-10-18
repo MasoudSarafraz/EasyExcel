@@ -4,6 +4,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Globalization;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
@@ -11,273 +12,157 @@ namespace EasyExcelTools
 {
     public static class EasyExcel
     {
-        public static List<T> ReadExcelFile<T>(Stream stream) where T : new()
+        public static List<T> ReadExcelFile<T>(Stream oStream) where T : new()
         {
-            var result = new List<T>();
-            var properties = typeof(T).GetProperties().ToDictionary(p => GetExcelColumnName(p), p => p);
-            using (var spreadsheetDocument = SpreadsheetDocument.Open(stream, false))
+            var oResult = new List<T>();
+            var oProperties = typeof(T).GetProperties().ToDictionary(p => GetExcelColumnName(p), p => p);
+            using (var oMemoryStream = new MemoryStream())
             {
-                var workbookPart = spreadsheetDocument.WorkbookPart;
-                if (workbookPart == null) { return result; }
-                var sheetName = GetExcelSheetName<T>();
-                var sheet = workbookPart.Workbook.Descendants<Sheet>().FirstOrDefault(s => s.Name?.Value.Trim() == sheetName);
-                if (sheet == null) { return result; }
-                var worksheetPart = (WorksheetPart)workbookPart.GetPartById(sheet.Id);
-                var sheetData = worksheetPart.Worksheet.Elements<SheetData>().FirstOrDefault();
-                if (sheetData == null) { return result; }
-                var headers = sheetData.Elements<Row>().FirstOrDefault()?.Elements<Cell>().Select(c => GetCellValue(c, workbookPart).Trim()).ToList();
-                if (headers == null || !headers.Any()) { return result; }
-                foreach (var row in sheetData.Elements<Row>().Skip(1))
+                if (oStream.CanSeek) oStream.Position = 0; else throw new ArgumentException("Stream must be seekable.");
+                oStream.CopyTo(oMemoryStream);
+                oMemoryStream.Position = 0;
+                using (var oSpreadsheetDocument = SpreadsheetDocument.Open(oMemoryStream, false))
                 {
-                    var item = new T();
-                    var cells = row.Elements<Cell>().ToList();
-                    for (int i = 0; i < headers.Count && i < cells.Count; i++)
+                    var oWorkbookPart = oSpreadsheetDocument.WorkbookPart;
+                    if (oWorkbookPart == null) return oResult;
+                    var sSheetName = GetExcelSheetName<T>();
+                    var oSheet = oWorkbookPart.Workbook.Descendants<Sheet>().FirstOrDefault(s => s.Name?.Value.Trim() == sSheetName);
+                    if (oSheet == null) return oResult;
+                    var oWorksheetPart = (WorksheetPart)oWorkbookPart.GetPartById(oSheet.Id);
+                    var oSheetData = oWorksheetPart.Worksheet.Elements<SheetData>().FirstOrDefault();
+                    if (oSheetData == null) return oResult;
+                    var oSharedStringTable = oWorkbookPart.GetPartsOfType<SharedStringTablePart>().FirstOrDefault()?.SharedStringTable;
+                    var oHeaders = oSheetData.Elements<Row>().FirstOrDefault()?.Elements<Cell>().Select(c => GetCellValue(c, oSharedStringTable).Trim()).ToList();
+                    if (oHeaders == null || !oHeaders.Any()) return oResult;
+                    foreach (var oRow in oSheetData.Elements<Row>().Skip(1))
                     {
-                        var header = headers[i];
-                        var cellValue = GetCellValue(cells[i], workbookPart);
-                        if (properties.ContainsKey(header))
+                        var oItem = new T();
+                        var oCells = oRow.Elements<Cell>().ToList();
+                        for (int iIndex = 0; iIndex < oHeaders.Count && iIndex < oCells.Count; iIndex++)
                         {
-                            var property = properties[header];
-                            try
+                            var sHeader = oHeaders[iIndex];
+                            var sCellValue = GetCellValue(oCells[iIndex], oSharedStringTable);
+                            if (oProperties.TryGetValue(sHeader, out var oProperty))
                             {
-                                var convertedValue = ConvertValue(cellValue, property.PropertyType);
-                                property.SetValue(item, convertedValue);
+                                try { var oConvertedValue = ConvertValue(sCellValue, oProperty.PropertyType); oProperty.SetValue(oItem, oConvertedValue); }
+                                catch { }
                             }
-                            catch { /* Ignore conversion errors */ }
                         }
-                    }
-                    result.Add(item);
-                }
-            }
-            return result;
-        }
-        public static (List<T1>, List<T2>) ReadExcelFile<T1, T2>(Stream stream) where T1 : new() where T2 : new()
-        {
-            return new ValueTuple<List<T1>, List<T2>>(ReadExcelFile<T1>(stream), ReadExcelFile<T2>(stream));
-        }
-        public static (List<T1>, List<T2>, List<T3>) ReadExcelFile<T1, T2, T3>(Stream stream) where T1 : new() where T2 : new() where T3 : new()
-        {
-            return new ValueTuple<List<T1>, List<T2>, List<T3>>(ReadExcelFile<T1>(stream), ReadExcelFile<T2>(stream), ReadExcelFile<T3>(stream));
-        }
-        public static (List<T1>, List<T2>, List<T3>, List<T4>) ReadExcelFile<T1, T2, T3, T4>(Stream stream) where T1 : new() where T2 : new() where T3 : new() where T4 : new()
-        {
-            return new ValueTuple<List<T1>, List<T2>, List<T3>, List<T4>>(ReadExcelFile<T1>(stream), ReadExcelFile<T2>(stream), ReadExcelFile<T3>(stream), ReadExcelFile<T4>(stream));
-        }
-        public static (List<T1>, List<T2>, List<T3>, List<T4>, List<T5>) ReadExcelFile<T1, T2, T3, T4, T5>(Stream stream) where T1 : new() where T2 : new() where T3 : new() where T4 : new() where T5 : new()
-        {
-            return new ValueTuple<List<T1>, List<T2>, List<T3>, List<T4>, List<T5>>(ReadExcelFile<T1>(stream), ReadExcelFile<T2>(stream), ReadExcelFile<T3>(stream), ReadExcelFile<T4>(stream), ReadExcelFile<T5>(stream));
-        }
-        public static byte[] ExportToExcel<T>(IEnumerable<T> data, string sheetName = "Sheet1") where T : new()
-        {
-            using (var memoryStream = new MemoryStream())
-            {
-                using (var spreadsheetDocument = SpreadsheetDocument.Create(memoryStream, SpreadsheetDocumentType.Workbook))
-                {
-                    var workbookPart = spreadsheetDocument.AddWorkbookPart();
-                    workbookPart.Workbook = new Workbook();
-                    var worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
-                    worksheetPart.Worksheet = new Worksheet(new SheetData());
-                    var sheets = spreadsheetDocument.WorkbookPart.Workbook.AppendChild(new Sheets());
-                    sheets.Append(new Sheet() { Id = spreadsheetDocument.WorkbookPart.GetIdOfPart(worksheetPart), SheetId = 1, Name = sheetName });
-                    WriteDataTableToWorksheet(worksheetPart.Worksheet, ToFilteredDataTable(data));
-                    EnsureWorkbookStylesPart(workbookPart);
-                    workbookPart.Workbook.Save();
-                }
-                return memoryStream.ToArray();
-            }
-        }
-        public static byte[] ExportToExcel<T>(DataTable datatable, string sheetName = "Sheet1") where T : new()
-        {
-            IEnumerable<T> data = ConvertDataTableToIEnumerable<T>(datatable);
-            return ExportToExcel(data, sheetName);            
-        }
-        private static IEnumerable<T> ConvertDataTableToIEnumerable<T>(DataTable dataTable) where T : new()
-        {
-            foreach (DataRow row in dataTable.Rows)
-            {
-                T item = new T();
-                foreach (PropertyInfo prop in typeof(T).GetProperties())
-                {
-                    if (dataTable.Columns.Contains(prop.Name) && row[prop.Name] != DBNull.Value)
-                    {
-                        object value = Convert.ChangeType(row[prop.Name], prop.PropertyType);
-                        prop.SetValue(item, value, null);
+                        oResult.Add(oItem);
                     }
                 }
-                yield return item;
             }
+            return oResult;
         }
-        private static DataTable ToFilteredDataTable<T>(IEnumerable<T> data)
+        public static (List<T1>, List<T2>) ReadExcelFile<T1, T2>(Stream oStream) where T1 : new() where T2 : new() { return (ReadExcelFile<T1>(oStream), ReadExcelFile<T2>(oStream)); }
+        public static (List<T1>, List<T2>, List<T3>) ReadExcelFile<T1, T2, T3>(Stream oStream) where T1 : new() where T2 : new() where T3 : new() { return (ReadExcelFile<T1>(oStream), ReadExcelFile<T2>(oStream), ReadExcelFile<T3>(oStream)); }
+        public static (List<T1>, List<T2>, List<T3>, List<T4>) ReadExcelFile<T1, T2, T3, T4>(Stream oStream) where T1 : new() where T2 : new() where T3 : new() where T4 : new() { return (ReadExcelFile<T1>(oStream), ReadExcelFile<T2>(oStream), ReadExcelFile<T3>(oStream), ReadExcelFile<T4>(oStream)); }
+        public static (List<T1>, List<T2>, List<T3>, List<T4>, List<T5>) ReadExcelFile<T1, T2, T3, T4, T5>(Stream oStream) where T1 : new() where T2 : new() where T3 : new() where T4 : new() where T5 : new() { return (ReadExcelFile<T1>(oStream), ReadExcelFile<T2>(oStream), ReadExcelFile<T3>(oStream), ReadExcelFile<T4>(oStream), ReadExcelFile<T5>(oStream)); }
+
+        // *** تغییر کلیدی در این متد ***
+        public static byte[] ExportToExcel<T>(IEnumerable<T> oData, string sSheetName = "Sheet1") where T : new()
         {
-            var dataTable = new DataTable();
-            var properties = typeof(T).GetProperties().Where(p => p.GetCustomAttribute<ExcelExportAttribute>() != null).OrderBy(p => GetColumnOrder(p)).ToList();
-            foreach (var property in properties)
+            // اگر نام شیت مشخص نشده بود، از نام در Attribute استفاده کن
+            if (sSheetName == "Sheet1")
             {
-                var attribute = property.GetCustomAttribute<ExcelExportAttribute>();
-                var columnName = attribute?.DisplayName ?? property.Name;
-                dataTable.Columns.Add(columnName, Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType);
+                sSheetName = GetExcelSheetName<T>();
             }
-            foreach (var item in data)
+
+            using (var oMemoryStream = new MemoryStream())
             {
-                var row = new object[properties.Count];
-                for (int i = 0; i < properties.Count; i++)
+                using (var oSpreadsheetDocument = SpreadsheetDocument.Create(oMemoryStream, SpreadsheetDocumentType.Workbook))
                 {
-                    row[i] = properties[i].GetValue(item) ?? DBNull.Value;
+                    var oWorkbookPart = oSpreadsheetDocument.AddWorkbookPart(); oWorkbookPart.Workbook = new Workbook();
+                    var oWorksheetPart = oWorkbookPart.AddNewPart<WorksheetPart>(); oWorksheetPart.Worksheet = new Worksheet(new SheetData());
+                    var oSheets = oSpreadsheetDocument.WorkbookPart.Workbook.AppendChild(new Sheets());
+                    oSheets.Append(new Sheet() { Id = oSpreadsheetDocument.WorkbookPart.GetIdOfPart(oWorksheetPart), SheetId = 1, Name = sSheetName });
+                    WriteDataTableToWorksheet(oWorksheetPart.Worksheet, ToFilteredDataTable(oData));
+                    EnsureWorkbookStylesPart(oWorkbookPart);
+                    oWorkbookPart.Workbook.Save();
                 }
-                dataTable.Rows.Add(row);
+                return oMemoryStream.ToArray();
             }
-            return dataTable;
         }
-        private static int GetColumnOrder(PropertyInfo property)
+
+        // *** تغییر کلیدی در این متد ***
+        public static byte[] ExportToExcel<T>(DataTable oDatatable, string sSheetName = "Sheet1") where T : new()
         {
-            var attribute = property.GetCustomAttribute<ExcelExportAttribute>();
-            return attribute?.ColumnOrder ?? int.MaxValue;
-        }
-        private static DataTable ToDataTable<T>(IEnumerable<T> data)
-        {
-            var dataTable = new DataTable();
-            var properties = typeof(T).GetProperties();
-            foreach (var property in properties)
+            // اگر نام شیت مشخص نشده بود، از نام در Attribute استفاده کن
+            if (sSheetName == "Sheet1")
             {
-                dataTable.Columns.Add(property.Name, Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType);
+                sSheetName = GetExcelSheetName<T>();
             }
-            foreach (var item in data)
-            {
-                var row = new object[properties.Length];
-                for (int i = 0; i < properties.Length; i++)
-                {
-                    row[i] = properties[i].GetValue(item) ?? DBNull.Value;
-                }
-                dataTable.Rows.Add(row);
-            }
-            return dataTable;
+            IEnumerable<T> oData = ConvertDataTableToIEnumerable<T>(oDatatable);
+            return ExportToExcel(oData, sSheetName);
         }
-        private static void WriteDataTableToWorksheet(Worksheet worksheet, DataTable dataTable)
+
+        private static IEnumerable<T> ConvertDataTableToIEnumerable<T>(DataTable oDatatable) where T : new()
         {
-            var sheetData = worksheet.GetFirstChild<SheetData>() ?? worksheet.AppendChild(new SheetData());
-            int rowIndex = 1;
-            int colIndex = 0;
-            var headerRow = new Row { RowIndex = (uint)rowIndex++ };
-            foreach (var column in dataTable.Columns.Cast<DataColumn>())
-            {
-                var cell = CreateTextCell(GetCellReference(colIndex++, rowIndex - 1), column.ColumnName);
-                headerRow.Append(cell);
-            }
-            sheetData.AppendChild(headerRow);
-            foreach (DataRow row in dataTable.Rows)
-            {
-                var dataRow = new Row { RowIndex = (uint)rowIndex++ };
-                colIndex = 0;
-                foreach (var item in row.ItemArray)
-                {
-                    var cell = CreateTypedCell(GetCellReference(colIndex++, rowIndex - 1), item);
-                    dataRow.Append(cell);
-                }
-                sheetData.AppendChild(dataRow);
-            }
+            var oProperties = typeof(T).GetProperties().ToDictionary(p => p.Name, p => p);
+            foreach (DataRow oRow in oDatatable.Rows) { T oItem = new T(); foreach (DataColumn oColumn in oDatatable.Columns) if (oProperties.TryGetValue(oColumn.ColumnName, out var oProperty) && oRow[oColumn] != DBNull.Value) { try { object oValue = Convert.ChangeType(oRow[oColumn], oProperty.PropertyType); oProperty.SetValue(oItem, oValue, null); } catch { } } yield return oItem; }
         }
-        private static Cell CreateTextCell(string cellReference, string value)
+        private static DataTable ToFilteredDataTable<T>(IEnumerable<T> oData)
         {
-            return new Cell { CellReference = cellReference, DataType = CellValues.String, CellValue = new CellValue(value) };
-        }
-        private static Cell CreateTypedCell(string cellReference, object value)
-        {
-            if (value == null) { return new Cell { CellReference = cellReference }; }
-            var cell = new Cell { CellReference = cellReference };
-            if (value is int || value is double || value is decimal)
+            var oDataTable = new DataTable();
+            var oProperties = typeof(T).GetProperties().Where(p => p.GetCustomAttribute<ExcelExportAttribute>() != null).OrderBy(p => GetColumnOrder(p)).ToList();
+            foreach (var oProperty in oProperties)
             {
-                cell.DataType = CellValues.Number;
-                cell.CellValue = new CellValue(value.ToString());
+                var sColumnName = GetExcelColumnName(oProperty);
+                oDataTable.Columns.Add(sColumnName, Nullable.GetUnderlyingType(oProperty.PropertyType) ?? oProperty.PropertyType);
             }
-            else if (value is DateTime dateTime)
-            {
-                cell.DataType = CellValues.Date;
-                cell.CellValue = new CellValue(dateTime.ToString("o"));
-            }
-            else
-            {
-                cell.DataType = CellValues.String;
-                cell.CellValue = new CellValue(value.ToString());
-            }
-            return cell;
+            foreach (var oItem in oData) { var oRow = new object[oProperties.Count]; for (int iIndex = 0; iIndex < oProperties.Count; iIndex++) { oRow[iIndex] = oProperties[iIndex].GetValue(oItem) ?? DBNull.Value; } oDataTable.Rows.Add(oRow); }
+            return oDataTable;
         }
-        private static string GetCellReference(int columnIndex, int rowIndex)
+        private static int GetColumnOrder(PropertyInfo oProperty) { var oAttribute = oProperty.GetCustomAttribute<ExcelExportAttribute>(); return oAttribute?.ColumnOrder ?? int.MaxValue; }
+        private static void WriteDataTableToWorksheet(Worksheet oWorksheet, DataTable oDataTable)
         {
-            const string letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            var columnLetter = string.Empty;
-            while (columnIndex >= 0)
-            {
-                var remainder = columnIndex % 26;
-                columnLetter = letters[remainder] + columnLetter;
-                columnIndex = (columnIndex / 26) - 1;
-            }
-            return $"{columnLetter}{rowIndex}";
+            var oSheetData = oWorksheet.GetFirstChild<SheetData>() ?? oWorksheet.AppendChild(new SheetData());
+            int iRowIndex = 1; int iColIndex = 0;
+            var oHeaderRow = new Row { RowIndex = (uint)iRowIndex++ };
+            foreach (var oColumn in oDataTable.Columns.Cast<DataColumn>()) { var oCell = CreateTextCell(GetCellReference(iColIndex++, iRowIndex - 1), oColumn.ColumnName); oHeaderRow.Append(oCell); }
+            oSheetData.AppendChild(oHeaderRow);
+            foreach (DataRow oRow in oDataTable.Rows) { var oDataRow = new Row { RowIndex = (uint)iRowIndex++ }; iColIndex = 0; foreach (var oItem in oRow.ItemArray) { var oCell = CreateTypedCell(GetCellReference(iColIndex++, iRowIndex - 1), oItem); oDataRow.Append(oCell); } oSheetData.AppendChild(oDataRow); }
         }
-        private static void EnsureWorkbookStylesPart(WorkbookPart workbookPart)
+        private static Cell CreateTextCell(string sCellReference, string sValue) { return new Cell { CellReference = sCellReference, DataType = CellValues.String, CellValue = new CellValue(sValue) }; }
+        private static Cell CreateTypedCell(string sCellReference, object oValue)
         {
-            if (workbookPart.WorkbookStylesPart == null)
-            {
-                workbookPart.AddNewPart<WorkbookStylesPart>();
-            }
-            var stylesPart = workbookPart.WorkbookStylesPart;
-            if (stylesPart.Stylesheet == null)
-            {
-                stylesPart.Stylesheet = new Stylesheet();
-            }
-            var fonts = new Fonts(new Font());
-            fonts.Count = (uint)fonts.ChildElements.Count;
-            stylesPart.Stylesheet.Append(fonts);
-            var fills = new Fills(new Fill(new PatternFill { PatternType = PatternValues.None }), new Fill(new PatternFill { PatternType = PatternValues.Gray125 }));
-            fills.Count = (uint)fills.ChildElements.Count;
-            stylesPart.Stylesheet.Append(fills);
-            var borders = new Borders(new Border());
-            borders.Count = (uint)borders.ChildElements.Count;
-            stylesPart.Stylesheet.Append(borders);
-            var cellFormats = new CellFormats(new CellFormat(), new CellFormat { FormatId = 0, FontId = 0, FillId = 0, BorderId = 0 });
-            cellFormats.Count = (uint)cellFormats.ChildElements.Count;
-            stylesPart.Stylesheet.Append(cellFormats);
-            stylesPart.Stylesheet.Save();
+            if (oValue == null) return new Cell { CellReference = sCellReference };
+            var oCell = new Cell { CellReference = sCellReference };
+            if (oValue is int || oValue is double || oValue is decimal || oValue is float) { oCell.DataType = CellValues.Number; oCell.CellValue = new CellValue(Convert.ToDouble(oValue).ToString(CultureInfo.InvariantCulture)); }
+            else if (oValue is DateTime oDateTime) { oCell.DataType = CellValues.Number; oCell.CellValue = new CellValue(oDateTime.ToOADate().ToString(CultureInfo.InvariantCulture)); oCell.StyleIndex = 1; }
+            else if (oValue is bool) { oCell.DataType = CellValues.Boolean; oCell.CellValue = new CellValue((bool)oValue ? "1" : "0"); }
+            else { oCell.DataType = CellValues.String; oCell.CellValue = new CellValue(oValue.ToString()); }
+            return oCell;
         }
-        private static CellValues GetCellDataType(object value)
+        private static string GetCellReference(int iColumnIndex, int iRowIndex) { const string sLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; var sColumnLetter = string.Empty; while (iColumnIndex >= 0) { var iRemainder = iColumnIndex % 26; sColumnLetter = sLetters[iRemainder] + sColumnLetter; iColumnIndex = (iColumnIndex / 26) - 1; } return $"{sColumnLetter}{iRowIndex}"; }
+        private static void EnsureWorkbookStylesPart(WorkbookPart oWorkbookPart)
         {
-            if (value == null || value is string) { return CellValues.String; }
-            if (value is int || value is double || value is decimal) { return CellValues.Number; }
-            if (value is DateTime) { return CellValues.Date; }
-            return CellValues.String;
+            if (oWorkbookPart.WorkbookStylesPart == null) oWorkbookPart.AddNewPart<WorkbookStylesPart>();
+            var oStylesPart = oWorkbookPart.WorkbookStylesPart;
+            if (oStylesPart.Stylesheet == null) oStylesPart.Stylesheet = new Stylesheet();
+            var oNumberingFormats = new NumberingFormats(new NumberingFormat { NumberFormatId = 164, FormatCode = "yyyy-mm-dd\\ hh:mm:ss" });
+            oNumberingFormats.Count = (uint)oNumberingFormats.ChildElements.Count; oStylesPart.Stylesheet.Append(oNumberingFormats);
+            var oFonts = new Fonts(new Font()); oFonts.Count = (uint)oFonts.ChildElements.Count; oStylesPart.Stylesheet.Append(oFonts);
+            var oFills = new Fills(new Fill(new PatternFill { PatternType = PatternValues.None }), new Fill(new PatternFill { PatternType = PatternValues.Gray125 })); oFills.Count = (uint)oFills.ChildElements.Count; oStylesPart.Stylesheet.Append(oFills);
+            var oBorders = new Borders(new Border()); oBorders.Count = (uint)oBorders.ChildElements.Count; oStylesPart.Stylesheet.Append(oBorders);
+            var oCellFormats = new CellFormats(new CellFormat(), new CellFormat { NumberFormatId = 164, FontId = 0, FillId = 0, BorderId = 0, ApplyNumberFormat = true });
+            oCellFormats.Count = (uint)oCellFormats.ChildElements.Count; oStylesPart.Stylesheet.Append(oCellFormats);
+            oStylesPart.Stylesheet.Save();
         }
-        private static string GetExcelColumnName(PropertyInfo property)
+        private static string GetExcelColumnName(PropertyInfo oProperty) { var oAttribute = oProperty.GetCustomAttribute<ExcelColumnNameAttribute>(); return oAttribute?.ColumnName ?? oProperty.Name; }
+        private static string GetExcelSheetName<T>() { var oAttribute = typeof(T).GetCustomAttribute<ExcelSheetNameAttribute>(); return oAttribute?.SheetName ?? "Sheet1"; }
+        private static string GetCellValue(Cell oCell, SharedStringTable oSharedStringTable) { if (oCell == null) return string.Empty; var sValue = oCell.CellValue?.Text; if (oCell.DataType != null && oCell.DataType.Value == CellValues.SharedString && oSharedStringTable != null) { if (int.TryParse(sValue, out int iIndex) && iIndex >= 0 && iIndex < oSharedStringTable.Count()) sValue = oSharedStringTable.ElementAt(iIndex).InnerText; } return sValue ?? string.Empty; }
+        private static object ConvertValue(string sValue, Type oType)
         {
-            var attribute = property.GetCustomAttribute<ExcelColumnNameAttribute>();
-            return attribute?.ColumnName ?? property.Name;
-        }
-        private static string GetExcelSheetName<T>()
-        {
-            var attribute = typeof(T).GetCustomAttribute<ExcelSheetNameAttribute>();
-            return attribute?.SheetName ?? "Sheet1";
-        }
-        private static string GetCellValue(Cell cell, WorkbookPart workbookPart)
-        {
-            if (cell == null) { return string.Empty; }
-            var value = cell.CellValue?.Text;
-            if (cell.DataType != null && cell.DataType.Value == CellValues.SharedString)
-            {
-                var sharedStringTable = workbookPart.GetPartsOfType<SharedStringTablePart>().FirstOrDefault();
-                if (sharedStringTable != null && int.TryParse(value, out int index))
-                {
-                    value = sharedStringTable.SharedStringTable.ElementAt(index)?.InnerText;
-                }
-            }
-            return value ?? string.Empty;
-        }
-        private static object ConvertValue(string value, Type type)
-        {
-            if (string.IsNullOrEmpty(value)) { return null; }
-            if (type == typeof(int)) { return int.Parse(value); }
-            if (type == typeof(double)) { return double.Parse(value); }
-            if (type == typeof(decimal)) { return decimal.Parse(value); }
-            if (type == typeof(bool)) { return bool.Parse(value); }
-            if (type == typeof(DateTime)) { return DateTime.Parse(value); }
-            return value;
+            if (string.IsNullOrEmpty(sValue)) return null;
+            var oCulture = CultureInfo.InvariantCulture;
+            if (oType == typeof(int)) return int.Parse(sValue, oCulture);
+            if (oType == typeof(double)) return double.Parse(sValue, oCulture);
+            if (oType == typeof(decimal)) return decimal.Parse(sValue, oCulture);
+            if (oType == typeof(float)) return float.Parse(sValue, oCulture);
+            if (oType == typeof(bool)) { if (sValue == "1") return true; if (sValue == "0") return false; return bool.Parse(sValue); }
+            if (oType == typeof(DateTime)) return DateTime.FromOADate(double.Parse(sValue, oCulture));
+            return sValue;
         }
     }
 }
