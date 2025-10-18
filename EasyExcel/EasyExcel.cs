@@ -54,7 +54,6 @@ namespace EasyExcelTools
             }
             return oResult;
         }
-
         public static (List<T1>, List<T2>) ReadExcelFile<T1, T2>(Stream oStream) where T1 : new() where T2 : new()
         {
             var oAllSheetsData = ReadAllSheetsData(oStream);
