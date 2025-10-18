@@ -55,8 +55,6 @@ namespace EasyExcelTools
             return oResult;
         }
 
-        // --- متدهای بهینه شده برای خواندن چندین نوع داده با یک بار خواندن فایل ---
-
         public static (List<T1>, List<T2>) ReadExcelFile<T1, T2>(Stream oStream) where T1 : new() where T2 : new()
         {
             var oAllSheetsData = ReadAllSheetsData(oStream);
@@ -85,8 +83,6 @@ namespace EasyExcelTools
             MapDataToType(oAllSheetsData, oList1); MapDataToType(oAllSheetsData, oList2); MapDataToType(oAllSheetsData, oList3); MapDataToType(oAllSheetsData, oList4); MapDataToType(oAllSheetsData, oList5);
             return (oList1, oList2, oList3, oList4, oList5);
         }
-
-        // --- متدهای کمکی برای بهینه‌سازی ---
 
         private static Dictionary<string, List<Dictionary<string, string>>> ReadAllSheetsData(Stream oStream)
         {
@@ -137,8 +133,6 @@ namespace EasyExcelTools
                 oTargetList.Add(oItem);
             }
         }
-
-        // --- بقیه متدها بدون تغییر باقی می‌مانند ---
 
         public static byte[] ExportToExcel<T>(IEnumerable<T> oData, string sSheetName = "Sheet1") where T : new()
         {
