@@ -54,20 +54,95 @@ namespace EasyExcelTools
             }
             return oResult;
         }
-        public static (List<T1>, List<T2>) ReadExcelFile<T1, T2>(Stream oStream) where T1 : new() where T2 : new() { return (ReadExcelFile<T1>(oStream), ReadExcelFile<T2>(oStream)); }
-        public static (List<T1>, List<T2>, List<T3>) ReadExcelFile<T1, T2, T3>(Stream oStream) where T1 : new() where T2 : new() where T3 : new() { return (ReadExcelFile<T1>(oStream), ReadExcelFile<T2>(oStream), ReadExcelFile<T3>(oStream)); }
-        public static (List<T1>, List<T2>, List<T3>, List<T4>) ReadExcelFile<T1, T2, T3, T4>(Stream oStream) where T1 : new() where T2 : new() where T3 : new() where T4 : new() { return (ReadExcelFile<T1>(oStream), ReadExcelFile<T2>(oStream), ReadExcelFile<T3>(oStream), ReadExcelFile<T4>(oStream)); }
-        public static (List<T1>, List<T2>, List<T3>, List<T4>, List<T5>) ReadExcelFile<T1, T2, T3, T4, T5>(Stream oStream) where T1 : new() where T2 : new() where T3 : new() where T4 : new() where T5 : new() { return (ReadExcelFile<T1>(oStream), ReadExcelFile<T2>(oStream), ReadExcelFile<T3>(oStream), ReadExcelFile<T4>(oStream), ReadExcelFile<T5>(oStream)); }
 
-        // *** تغییر کلیدی در این متد ***
+        // --- متدهای بهینه شده برای خواندن چندین نوع داده با یک بار خواندن فایل ---
+
+        public static (List<T1>, List<T2>) ReadExcelFile<T1, T2>(Stream oStream) where T1 : new() where T2 : new()
+        {
+            var oAllSheetsData = ReadAllSheetsData(oStream);
+            var oList1 = new List<T1>(); var oList2 = new List<T2>();
+            MapDataToType(oAllSheetsData, oList1); MapDataToType(oAllSheetsData, oList2);
+            return (oList1, oList2);
+        }
+        public static (List<T1>, List<T2>, List<T3>) ReadExcelFile<T1, T2, T3>(Stream oStream) where T1 : new() where T2 : new() where T3 : new()
+        {
+            var oAllSheetsData = ReadAllSheetsData(oStream);
+            var oList1 = new List<T1>(); var oList2 = new List<T2>(); var oList3 = new List<T3>();
+            MapDataToType(oAllSheetsData, oList1); MapDataToType(oAllSheetsData, oList2); MapDataToType(oAllSheetsData, oList3);
+            return (oList1, oList2, oList3);
+        }
+        public static (List<T1>, List<T2>, List<T3>, List<T4>) ReadExcelFile<T1, T2, T3, T4>(Stream oStream) where T1 : new() where T2 : new() where T3 : new() where T4 : new()
+        {
+            var oAllSheetsData = ReadAllSheetsData(oStream);
+            var oList1 = new List<T1>(); var oList2 = new List<T2>(); var oList3 = new List<T3>(); var oList4 = new List<T4>();
+            MapDataToType(oAllSheetsData, oList1); MapDataToType(oAllSheetsData, oList2); MapDataToType(oAllSheetsData, oList3); MapDataToType(oAllSheetsData, oList4);
+            return (oList1, oList2, oList3, oList4);
+        }
+        public static (List<T1>, List<T2>, List<T3>, List<T4>, List<T5>) ReadExcelFile<T1, T2, T3, T4, T5>(Stream oStream) where T1 : new() where T2 : new() where T3 : new() where T4 : new() where T5 : new()
+        {
+            var oAllSheetsData = ReadAllSheetsData(oStream);
+            var oList1 = new List<T1>(); var oList2 = new List<T2>(); var oList3 = new List<T3>(); var oList4 = new List<T4>(); var oList5 = new List<T5>();
+            MapDataToType(oAllSheetsData, oList1); MapDataToType(oAllSheetsData, oList2); MapDataToType(oAllSheetsData, oList3); MapDataToType(oAllSheetsData, oList4); MapDataToType(oAllSheetsData, oList5);
+            return (oList1, oList2, oList3, oList4, oList5);
+        }
+
+        // --- متدهای کمکی برای بهینه‌سازی ---
+
+        private static Dictionary<string, List<Dictionary<string, string>>> ReadAllSheetsData(Stream oStream)
+        {
+            var oAllSheetsData = new Dictionary<string, List<Dictionary<string, string>>>();
+            using (var oMemoryStream = new MemoryStream())
+            {
+                if (oStream.CanSeek) { oStream.Position = 0; } else { throw new ArgumentException("Input stream must be seekable.", nameof(oStream)); }
+                oStream.CopyTo(oMemoryStream);
+                oMemoryStream.Position = 0;
+                using (var oSpreadsheetDocument = SpreadsheetDocument.Open(oMemoryStream, false))
+                {
+                    var oWorkbookPart = oSpreadsheetDocument.WorkbookPart;
+                    if (oWorkbookPart == null) return oAllSheetsData;
+                    var oSharedStringTable = oWorkbookPart.GetPartsOfType<SharedStringTablePart>().FirstOrDefault()?.SharedStringTable;
+                    foreach (var oSheet in oWorkbookPart.Workbook.Descendants<Sheet>())
+                    {
+                        var oWorksheetPart = (WorksheetPart)oWorkbookPart.GetPartById(oSheet.Id);
+                        var oSheetData = oWorksheetPart.Worksheet.Elements<SheetData>().FirstOrDefault();
+                        if (oSheetData == null) continue;
+                        var oHeaders = oSheetData.Elements<Row>().FirstOrDefault()?.Elements<Cell>().Select(c => GetCellValue(c, oSharedStringTable).Trim()).ToList();
+                        if (oHeaders == null || !oHeaders.Any()) continue;
+                        var oSheetRows = new List<Dictionary<string, string>>();
+                        foreach (var oRow in oSheetData.Elements<Row>().Skip(1))
+                        {
+                            var oRowData = new Dictionary<string, string>();
+                            var oCells = oRow.Elements<Cell>().ToList();
+                            for (int iIndex = 0; iIndex < oHeaders.Count && iIndex < oCells.Count; iIndex++) { oRowData[oHeaders[iIndex]] = GetCellValue(oCells[iIndex], oSharedStringTable); }
+                            oSheetRows.Add(oRowData);
+                        }
+                        oAllSheetsData[oSheet.Name.Value] = oSheetRows;
+                    }
+                }
+            }
+            return oAllSheetsData;
+        }
+        private static void MapDataToType<T>(Dictionary<string, List<Dictionary<string, string>>> oAllSheetsData, List<T> oTargetList) where T : new()
+        {
+            var sSheetName = GetExcelSheetName<T>();
+            if (!oAllSheetsData.TryGetValue(sSheetName, out var oSheetData)) return;
+            var oProperties = typeof(T).GetProperties().ToDictionary(p => GetExcelColumnName(p), p => p);
+            foreach (var oRowData in oSheetData)
+            {
+                var oItem = new T();
+                foreach (var oKvp in oRowData)
+                {
+                    if (oProperties.TryGetValue(oKvp.Key, out var oProperty)) { try { var oConvertedValue = ConvertValue(oKvp.Value, oProperty.PropertyType); oProperty.SetValue(oItem, oConvertedValue); } catch { } }
+                }
+                oTargetList.Add(oItem);
+            }
+        }
+
+        // --- بقیه متدها بدون تغییر باقی می‌مانند ---
+
         public static byte[] ExportToExcel<T>(IEnumerable<T> oData, string sSheetName = "Sheet1") where T : new()
         {
-            // اگر نام شیت مشخص نشده بود، از نام در Attribute استفاده کن
-            if (sSheetName == "Sheet1")
-            {
-                sSheetName = GetExcelSheetName<T>();
-            }
-
+            if (sSheetName == "Sheet1") { sSheetName = GetExcelSheetName<T>(); }
             using (var oMemoryStream = new MemoryStream())
             {
                 using (var oSpreadsheetDocument = SpreadsheetDocument.Create(oMemoryStream, SpreadsheetDocumentType.Workbook))
@@ -83,19 +158,12 @@ namespace EasyExcelTools
                 return oMemoryStream.ToArray();
             }
         }
-
-        // *** تغییر کلیدی در این متد ***
         public static byte[] ExportToExcel<T>(DataTable oDatatable, string sSheetName = "Sheet1") where T : new()
         {
-            // اگر نام شیت مشخص نشده بود، از نام در Attribute استفاده کن
-            if (sSheetName == "Sheet1")
-            {
-                sSheetName = GetExcelSheetName<T>();
-            }
+            if (sSheetName == "Sheet1") { sSheetName = GetExcelSheetName<T>(); }
             IEnumerable<T> oData = ConvertDataTableToIEnumerable<T>(oDatatable);
             return ExportToExcel(oData, sSheetName);
         }
-
         private static IEnumerable<T> ConvertDataTableToIEnumerable<T>(DataTable oDatatable) where T : new()
         {
             var oProperties = typeof(T).GetProperties().ToDictionary(p => p.Name, p => p);
