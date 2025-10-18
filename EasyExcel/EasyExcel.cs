@@ -124,9 +124,9 @@ namespace EasyExcelTools
             foreach (var oRowData in oSheetData)
             {
                 var oItem = new T();
-                foreach (var oKvp in oRowData)
+                foreach (var oRow in oRowData)
                 {
-                    if (oProperties.TryGetValue(oKvp.Key, out var oProperty)) { try { var oConvertedValue = ConvertValue(oKvp.Value, oProperty.PropertyType); oProperty.SetValue(oItem, oConvertedValue); } catch { } }
+                    if (oProperties.TryGetValue(oRow.Key, out var oProperty)) { try { var oConvertedValue = ConvertValue(oRow.Value, oProperty.PropertyType); oProperty.SetValue(oItem, oConvertedValue); } catch { } }
                 }
                 oTargetList.Add(oItem);
             }
