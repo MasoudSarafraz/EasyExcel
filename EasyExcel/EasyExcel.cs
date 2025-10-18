@@ -83,7 +83,6 @@ namespace EasyExcelTools
             MapDataToType(oAllSheetsData, oList1); MapDataToType(oAllSheetsData, oList2); MapDataToType(oAllSheetsData, oList3); MapDataToType(oAllSheetsData, oList4); MapDataToType(oAllSheetsData, oList5);
             return (oList1, oList2, oList3, oList4, oList5);
         }
-
         private static Dictionary<string, List<Dictionary<string, string>>> ReadAllSheetsData(Stream oStream)
         {
             var oAllSheetsData = new Dictionary<string, List<Dictionary<string, string>>>();
@@ -133,7 +132,6 @@ namespace EasyExcelTools
                 oTargetList.Add(oItem);
             }
         }
-
         public static byte[] ExportToExcel<T>(IEnumerable<T> oData, string sSheetName = "Sheet1") where T : new()
         {
             if (sSheetName == "Sheet1") { sSheetName = GetExcelSheetName<T>(); }
